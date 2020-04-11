@@ -1,0 +1,250 @@
+# Some good standards, which are not used if the user
+# creates his/her own .bashrc/.bash_profile
+
+# --show-control-chars: help showing Korean or accented characters
+alias ls='ls -F --color=auto --show-control-chars'
+alias ll='ls -l'
+alias gc='createAndUpdateJiraStatus'
+
+
+createAndUpdateJiraStatus(){
+
+	printf "\033[0;32m";
+	echo 'BY NDIA'
+
+    printf "\033[0m";
+    printf "\n";
+    
+
+    local localRepository=true;
+    local fromBranchSpecify=false;
+
+    local fromBranch="develop";
+	local jira_type="";
+	local branchName="";
+	local JIRA_TICKET_ID="";
+	local JIRA_USER="user";
+	local JIRA_USER_PWD="pass@word";
+	local JIRA_URL="https://si-devops-jira.xxx.fr";
+
+	local usage="Usage:  branch [-p/-l action] [-f from] [-b] [<branchName>] 
+These are only 2 [actions] :
+	-p  branch to create will be push after its creation
+	-l  branch to create will not be push (is default)
+Branch from where new one will be create (default is develop) :
+	-f  specify branch source ( ex : -f feature/ID_JIRA) , default is develop
+These are only one command  :
+	branchName   branch to create , the accepted values ​​are [bugfix/XXXXX , hotfix/XXXX , feature/XXXX , technical/XXXX] when XXXX is the JIRA ID
+
+Exemple of basic usage : gc branch -b feature/ID_JIRA  => create new branch feature/ID_JIRA with no push to remote and make jira transtion to in_progress"
+
+
+	if [ "$#" -lt 1 ]; then
+    	activeColor;
+		printf "Number of parameters incoherence   \n \n" ; 
+		desActiveColor;
+		printf "$usage"; 
+		return 1;
+	fi
+	
+	if  [ -z "$1" -o  $1 != "branch" -o  $1 == "man" -o  $1 == "help"  -o  -z "$2" -o "$2" == " " ] ; then
+		activeColor;
+		printf "Help/Man or Incoherence \n \n" ; 
+		desActiveColor;
+		printf "$usage"; 
+		return 1;
+	fi;
+
+	if [ $1 == "branch" ] ;  then
+
+		# the action (push or not on remote) is specified so we check coherence and retrieve branchName
+		if  [ $2 == "-p" -o $2 == "-l" ] ; then 
+			
+			if  [ $2 == "-p" ] ; then localRepository=false;
+			fi;
+
+			if [ -z "$3" -o "$3" == " " ]; then
+				activeColor;
+				printf "Number of parameters incoherence (1)  \n \n" ; 
+				desActiveColor;
+				printf "$usage";  
+				return 1;
+			else
+
+				# the from (develop is default) is specified so we check coherence and retrieve branchName
+				if [ $3 == "-f" ]; then
+					fromBranchSpecify=true;
+					#if from branch is specified so we have to provide -b and branchName
+					if [ -z "$4" -o "$4" == " " -o -z "$5" -o "$5" != "-b" -o -z "$6" -o "$6" == " " ]; then
+						activeColor;
+						printf "Number of parameters incoherence (2)  \n \n" ; 
+						desActiveColor;
+						printf "$usage";  
+						return 1;
+					else
+						fromBranch=$4
+						branchName=$6
+					fi;
+				elif [ $3 == "-b" ]; then
+					if [ -z "$4" -o "$4" == " " ]; then
+						activeColor;
+						printf "Number of parameters incoherence (3)  \n \n" ; 
+						desActiveColor;
+						printf "$usage";  
+						return 1;
+					else
+						branchName=$4
+					fi;
+				else
+					activeColor;
+					printf "Number of parameters incoherence (4)  \n \n" ; 
+					desActiveColor;
+					printf "$usage";  
+					return 1;
+				fi;
+			fi;
+
+		elif [ $2 == "-f" ]; then
+			fromBranchSpecify=true;
+			#if from branch is specified so we have to provide -b and branchName
+			if [ -z "$3" -o "$3" == " " -o -z "$4" -o "$4" != "-b" -o -z "$5" -o "$5" == " " ]; then
+				activeColor;
+				printf "Number of parameters incoherence (5)  \n \n" ; 
+				desActiveColor;
+				printf "$usage";  
+				return 1;
+			else
+				fromBranch=$3
+				branchName=$5
+			fi;
+		# the from (develop is default) is not specified so we check coherence and retrieve branchName
+		elif [ $2 == "-b" ]; then
+			fromBranchSpecify=false;
+			branchName=$3;
+		# the from (develop is default) is not specified so we check coherence and retrieve branchName
+		else
+			activeColor;
+			printf "Number of parameters incoherence (6)  \n \n" ; 
+			desActiveColor;
+			printf "$usage";  
+			return 1;
+		fi;
+
+
+		if [ ! -z "$branchName" -o "$branchName" != " " ] ; then
+
+			local jira_type=`echo "$branchName" |  cut -d"/" -f1 `
+
+			local JIRA_TICKET_ID=`echo "$branchName" |  cut -d"/" -f2 `
+
+			if [ -z "$JIRA_TICKET_ID" -o "$JIRA_TICKET_ID" == " " ] ; then
+				activeColor ; 
+				printf "The JIRA ID should not be nill or empty  \n \n" ; 
+				desActiveColor ; 
+				printf "$usage";  
+				return 1; 
+			fi;
+
+
+			### Check jira ticket coherence and create and push or not the branch to remote tracking
+			if [ $jira_type == "hotfix" -o  $jira_type == "feature" -o $jira_type == "bugfix" -o $jira_type == "technical" ] ; 
+			then 
+				#checkout/pull source branch
+				printf "\n";
+				printf "\033[0;33m"       # Yellow
+				echo "############################################"
+				echo "## 1 : Checkout and Pull : " $fromBranch "##"
+				echo "############################################"
+				printf "\033[0m";
+				printf "\n";
+				command git checkout "$fromBranch" ;
+				command git pull ; 
+
+
+				#create new branch (from source)
+				printf "\n";
+				printf "\033[0;34m"  
+				echo "############################################"
+				echo "## 2- Create New Branch: " $branchName " from " $fromBranch "###"
+				echo "############################################"
+				printf "\033[0m";
+				printf "\n";
+				command git checkout -b "$branchName" ; 
+				
+				#tarck on remote if necessary
+				if  [ $localRepository != true ] ; 
+				then  
+
+					#create new branch (from source)
+					printf "\n";
+					printf "\033[0;35m"
+					echo "####################################################"
+					echo "## 2-1- Push New Branch : " $fromBranch " remote ###"
+					echo "####################################################"
+					printf "\033[0m";
+					printf "\n";
+					command git push -u origin "$branchName" ; 
+				fi;
+
+				#create new branch
+				#create new branch (from source)
+				printf "\n";
+				printf "\033[0;36m" 
+				echo "#########################################################################"
+				echo "## 3- Make Transition (Update JIRA status) for :"${JIRA_TICKET_ID}": ###########"
+				echo "#########################################################################"
+				printf "\033[0m";
+				printf "\n";		
+				
+				#make a transition to move to in_progress
+				curl -k -u ${JIRA_USER}:${JIRA_USER_PWD} -X POST -H "Content-Type: application/json" --data '{ "transition": { "id": "41" } }'  ${JIRA_URL}/rest/api/latest/issue/${JIRA_TICKET_ID}/transitions
+
+
+			else 
+				activeColor;
+				printf "The type of JIRA is not correct, the accepted values ​​are [bugfix , hotfix , feature , technical] \n \n" ; 
+				desActiveColor;
+				printf "$usage" ;
+				return 1; 
+			fi;
+
+		else
+			activeColor ; 
+			printf "The JIRA ID should not be nill or empty  \n \n" ; 
+			desActiveColor ; 
+			printf "$usage";  
+			return 1;
+		fi;
+
+	else 
+
+		printf "$usage"; 
+		return 1;
+	
+	fi ; 
+} ;
+
+activeColor(){
+	printf "\n" 
+	printf "\033[0;31m";
+};
+desActiveColor(){
+	printf "\033[0m";
+};
+
+
+
+case "$TERM" in
+xterm*)
+	# The following programs are known to require a Win32 Console
+	# for interactive usage, therefore let's launch them through winpty
+	# when run inside `mintty`.
+	for name in node ipython php php5 psql python2.7
+	do
+		case "$(type -p "$name".exe 2>/dev/null)" in
+		''|/usr/bin/*) continue;;
+		esac
+		alias $name="winpty $name.exe"
+	done
+	;;
+esac
