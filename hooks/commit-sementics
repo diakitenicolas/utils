@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -o nounset -o pipefail
+
+main() {
+  local SCRIPT_REAL_PATH
+  SCRIPT_REAL_PATH="$(python -c 'import sys; import os.path; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+  local SCRIPT_DIR
+  SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_REAL_PATH}")" && pwd)"
+
+  source "${SCRIPT_DIR}/../worker" && worker_init "git"
+
+  local FIRST_LINE
+  FIRST_LINE="$(head -1 "${1}")"
+
+  if [[ $(git_is_commit_wip "${FIRST_LINE}") == "true" ]]; then
+    exit 0
+  fi
+
+  if [[ $(git_is_conventional_commit "${FIRST_LINE}") != "true" ]]; then
+    git_conventionnal_commit_guidelines
+    exit 1
+  fi
+
+  if [[ $(git_is_valid_description "${FIRST_LINE}") != "true" ]]; then
+    git_valid_description_guideline
+    exit 1
+  fi
+
+  exit 0
+}
+
+main "${@:-}"

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -o nounset -o pipefail
+
+main(){
+
+	local PROJECT_KEY
+	PROJECT_KEY="DSIWSIPEDIA"
+	
+	# set this to your active development branch
+	local DEVELOP_BRANCH
+	DEVELOP_BRANCH="develop"
+
+	local CURRENT_BRANCH
+	CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+
+	# only check commit messages on main development branch
+	[ "$CURRENT_BRANCH" != "$DEVELOP_BRANCH" ] && exit 0
+
+	# regex to validate in commit msg
+	commit_regex='(${PROJECT_KEY}-[0-9]+|merge)'
+	error_msg="Aborting commit. Your commit message is missing either a JIRA Issue ('DSIWSIPEDIA-1111') or 'Merge'"
+
+	if ! grep -iqE "$commit_regex" "$1"; then
+	    echo "$error_msg" >&2
+	    exit 1
+	fi
+}
+main "${@:-}"
