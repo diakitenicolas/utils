@@ -3,7 +3,7 @@
 set -o nounset -o pipefail -o errexit
 
 main() {
-  local REMOTE_DEPENDENCIES_URL="https://raw.githubusercontent.com/diaktienicolas/utils/master/"
+  local REMOTE_DEPENDENCIES_URL="https://raw.githubusercontent.com/diakitenicolas/utils/master/"
 
   printf "Bootstrapping to scripts\n"
   mkdir -p "./scripts"
@@ -13,7 +13,7 @@ main() {
 
     curl -q -sSL --max-time 10 -o "./worker" "${REMOTE_DEPENDENCIES_URL}/worker"
     chmod +x "./worker"
-    source "./worker" && meta_init "${@}"
+    source "./worker" && worker_init "${@}"
   )
 }
 
