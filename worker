@@ -14,8 +14,6 @@ worker_download_script() {
 worker_init() {
   local REMOTE_DEPENDENCIES_URL="https://raw.githubusercontent.com/diakitenicolas/utils/master/"
 
-
-  echo "nicoals"
   cd "${WORKER_SCRIPT_DIR}" || return 1
 
   for dep in "${@}"; do
@@ -24,7 +22,7 @@ worker_init() {
     fi
 
     if ! [[ -e "./${dep}" ]]; then
-      meta_download_script "${dep}"
+      worker_download_script "${dep}"
     fi
 
     if [[ $(grep -c "main()" "./${dep}") -eq 0 ]]; then
