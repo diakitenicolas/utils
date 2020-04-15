@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+GIT_HOOKS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+install() {
+  source "${GIT_HOOKS_SCRIPT_DIR}/worker" && worker_init "var" "git" "hooks/pre-commit" "hooks/prepare-commit-msg" "hooks/commit-msg"
+  var_color
+
+  (
+    cd "${GIT_HOOKS_SCRIPT_DIR}" || return 1
+
+    if [[ $(git_is_inside) != "true" ]]; then
+      printf "%bnot inside a git tree%b\n" "${YELLOW}" "${RESET}"
+      return
+    fi
+
+    local HOOKS_SOURCE_DIR="${GIT_HOOKS_SCRIPT_DIR}/hooks"
+    local HOOKS_TARGET_DIR
+    HOOKS_TARGET_DIR="$(git_root)/.git/hooks"
+
+    if ! [[ -d ${HOOKS_TARGET_DIR} ]]; then
+      mkdir -p "${HOOKS_TARGET_DIR}"
+    fi
+
+    (
+      cd "${HOOKS_SOURCE_DIR}" || return 1
+
+      for file in *; do
+        ln -s -f "${HOOKS_SOURCE_DIR}/${file}" "${HOOKS_TARGET_DIR}/${file}"
+        printf "%b✔ %s hook installed %b\n" "${GREEN}" "${file}" "${RESET}"
+      done
+    )
+  )
+}
+
+install
