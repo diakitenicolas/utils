@@ -1,27 +1,60 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-# Git Hook for JIRA_TASK_ID
-# Adds to the top of your commit message `JIRA_TASK_ID`, based on the prefix of the current branch `feature/AWG-562-add-linter`
-# Example: `Add SwiftLint -> `AWG-562 Add SwiftLint
+set -o nounset -o pipefail
 
-if [ -z "$BRANCHES_TO_SKIP" ]; then
-  BRANCHES_TO_SKIP=(master develop test)
-fi
 
-COMMIT_FILE=$1
-COMMIT_MSG=$(cat $1)
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-JIRA_ID_REGEX="[A-Z0-9]{1,10}-?[A-Z0-9]+"
-JIRA_ID_IN_CURRENT_BRANCH_NAME=$(echo "$CURRENT_BRANCH" | grep -Eo "$JIRA_ID_REGEX")
-JIRA_ID_IN_COMMIT_MESSAGE=$(echo "$COMMIT_MSG" | grep -Eo "$JIRA_ID_REGEX")
-JIRA_SMART_COMMIT_COMMENT_KEY=" #comment"
+main() {
 
-if [ ! -z "$JIRA_ID_IN_COMMIT_MESSAGE" ]; then
-  if [ "$JIRA_ID_IN_COMMIT_MESSAGE" != "$JIRA_ID_IN_CURRENT_BRANCH_NAME" ]; then
-    echo "Error, your commit message JIRA_TASK_ID='$JIRA_ID_IN_COMMIT_MESSAGE' is not equal to current branch JIRA_TASK_ID='$JIRA_ID_IN_CURRENT_BRANCH_NAME'"
-    exit 1
-  fi
-elif [ ! -z "$JIRA_ID_IN_CURRENT_BRANCH_NAME" ]; then
-  echo "$JIRA_ID_IN_CURRENT_BRANCH_NAME $JIRA_SMART_COMMIT_COMMENT_KEY $COMMIT_MSG" > $COMMIT_FILE
-  echo "JIRA ID '$JIRA_ID_IN_CURRENT_BRANCH_NAME', matched in current branch name, prepended to commit message. (Use --no-verify to skip)"
-fi
+	local SCRIPT_REAL_PATH
+	SCRIPT_REAL_PATH="$(python -c 'import sys; import os.path; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+	local SCRIPT_DIR
+	SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_REAL_PATH}")" && pwd)"
+
+	source "${SCRIPT_DIR}/../worker" && worker_init "jira"
+
+	if [ -z "${BRANCHES_TO_SKIP:-}" ]; then
+	  BRANCHES_TO_SKIP=(master develop test)
+	fi
+
+	if [[ -z "${USE_JIRA_SMART_COMMIT:-}" ]]; then
+	  USE_JIRA_SMART_COMMIT="false"
+	fi
+ 
+	COMMIT_FILE=$1
+	COMMIT_MSG="$(head -1 "${1}")"
+	CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+	if [[ ! -z "${USE_JIRA_SMART_COMMIT}" ]]; then
+		
+		jira_commit_comment
+		
+		ISSUEKEY=$(jira_issuekey_from_branchname "${CURRENT_BRANCH}")
+		SMART_COMMIT_COMMENT=^$(echo "[[:space:]]*($ISSUEKEY|$COMMENT_KEY)[[:space:]]*(a-zA-Z0-9|$COMMENT_KEY)*")
+
+		if [[ $COMMIT_MSG =~ $SMART_COMMIT_COMMENT ]] ; then 
+			
+			#All capturing group are ok so nothing to do		
+			if [[ ! -z "${BASH_REMATCH[2]}" ]] ; then 
+			 
+			 	exit 1
+
+			#Only first capturing group matched
+			elif [[ ! -z "${BASH_REMATCH[1]}" ]] ; then 
+				
+				# the #comment is provided so add issue key
+				if [[ ${BASH_REMATCH[1]} == ${COMMENT_KEY} ]] ; then 
+					sed -i '' -e "1s|^|$ISSUEKEY |" ${1}				
+				else
+					# the issue is provided so add issue comment key
+					sed "s|$COMMENT_KEY|& $ISSUEKEY|" ${1}
+				fi
+			fi
+		else
+			sed -i '' -e "1s|^|$ISSUEKEY $COMMENT_KEY |" ${1}
+		fi
+	fi
+
+	exit 0
+}
+
+main "${@:-}"
