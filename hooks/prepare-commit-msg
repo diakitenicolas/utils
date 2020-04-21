@@ -2,10 +2,17 @@
 
 set -o nounset -o pipefail
 
+sed_inplace() {
+  if [[ ${OSTYPE} =~ ^darwin ]]; then
+    sed -i '' "${@}"
+  else
+    sed -i "${@}"
+  fi
+}
 
 main() {
 
-	local SCRIPT_REAL_PATH
+  local SCRIPT_REAL_PATH
 	SCRIPT_REAL_PATH="$(python -c 'import sys; import os.path; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
 	local SCRIPT_DIR
 	SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_REAL_PATH}")" && pwd)"
@@ -19,40 +26,58 @@ main() {
 	if [[ -z "${USE_JIRA_SMART_COMMIT:-}" ]]; then
 	  USE_JIRA_SMART_COMMIT="false"
 	fi
- 
+
 	COMMIT_FILE=$1
 	COMMIT_MSG="$(head -1 "${1}")"
 	CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
+	if [[ $(git_is_commit_wip "${FIRST_LINE}") == "true" ]]; then
+    	exit 0
+  	fi
+
 	if [[ ! -z "${USE_JIRA_SMART_COMMIT}" ]]; then
-		
+
 		jira_commit_comment
-		
+
 		ISSUEKEY=$(jira_issuekey_from_branchname "${CURRENT_BRANCH}")
 		SMART_COMMIT_COMMENT=^$(echo "[[:space:]]*($ISSUEKEY|$COMMENT_KEY)[[:space:]]*(a-zA-Z0-9|$COMMENT_KEY)*")
 
-		if [[ $COMMIT_MSG =~ $SMART_COMMIT_COMMENT ]] ; then 
-			
-			#All capturing group are ok so nothing to do		
-			if [[ ! -z "${BASH_REMATCH[2]}" ]] ; then 
-			 
-			 	exit 1
+		if [[ $COMMIT_MSG =~ $SMART_COMMIT_COMMENT ]] ; then
+
+			#All capturing group are ok so nothing to do
+			if [[ ! -z "${BASH_REMATCH[2]}" ]] ; then
+
+			 	exit 0
 
 			#Only first capturing group matched
-			elif [[ ! -z "${BASH_REMATCH[1]}" ]] ; then 
-				
+			elif [[ ! -z "${BASH_REMATCH[1]}" ]] ; then
+
 				# the #comment is provided so add issue key
-				if [[ ${BASH_REMATCH[1]} == ${COMMENT_KEY} ]] ; then 
-					sed -i '' -e "1s|^|$ISSUEKEY |" ${1}				
+				if [[ ${BASH_REMATCH[1]} == ${COMMENT_KEY} ]] ; then
+					sed -i '' -e "1s|^|$ISSUEKEY |" ${1}
 				else
 					# the issue is provided so add issue comment key
 					sed "s|$COMMENT_KEY|& $ISSUEKEY|" ${1}
 				fi
 			fi
 		else
+			# add issue key follow by jira smart commit key
 			sed -i '' -e "1s|^|$ISSUEKEY $COMMENT_KEY |" ${1}
 		fi
-	fi
+
+	elif [[ -n ${CURRENT_BRANCH} && ${CURRENT_BRANCH} =~ (feature|bugfix|technical)/([A-Z0-9]+[-_][0-9]+) ]]; then
+
+	    local PREFIX="${BASH_REMATCH[2]}"
+
+	    if [[ ! ${FIRST_LINE} =~ ${PREFIX} ]]; then
+	      if [[ $(git_is_conventional_commit "${FIRST_LINE}") == "true" ]]; then
+	        perl -pi'' -e "s|^(revert:\ )?($(printf "%s\|" "${!CONVENTIONAL_COMMIT_SCOPES[@]}"))(\(.+\))?(\!?):|\1\2\3\4: ${PREFIX}|" "${1}"
+	      else
+	        sed_inplace -e "1s|^|${PREFIX} |" "${1}"
+	      fi
+    fi
+  fi
+
 
 	exit 0
 }

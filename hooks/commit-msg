@@ -3,7 +3,7 @@
 set -o nounset -o pipefail
 
 main() {
-	
+
 	local SCRIPT_REAL_PATH
 	SCRIPT_REAL_PATH="$(python -c 'import sys; import os.path; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
 	local SCRIPT_DIR
@@ -22,7 +22,7 @@ main() {
  	COMMIT_FILE=$1
 	COMMIT_MSG_FIRST_LINE="$(head -1 "${1}")"
 	CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-	
+
 
 	if [[ $(git_is_commit_wip "${COMMIT_MSG_FIRST_LINE}") == "true" ]]; then
     	exit 0
@@ -46,8 +46,8 @@ main() {
     		exit 1
   		fi
 	fi
-	
- 	exit 1;
+
+ 	exit 0;
 }
 
 main "${@:-}"
