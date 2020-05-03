@@ -59,11 +59,11 @@ EOF
     fi
 
 
-    printf "%bFormating Java files%b\n" "${BLUE}" "${RESET}"
+    printf "%bFormating Java files... %b\n" "${BLUE}" "${RESET} "
 
     java -jar "$JAR_FILE" --replace --set-exit-if-changed $JAVA_FILES
 
-    printf "%bLinting Java files %b\n" "${BLUE}" "${RESET}"
+    printf "%bEnd Formating Java files %b\n\n" "${BLUE}" "${RESET}"
 
   fi
 }

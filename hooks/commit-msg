@@ -4,50 +4,50 @@ set -o nounset -o pipefail
 
 main() {
 
-	local SCRIPT_REAL_PATH
-	SCRIPT_REAL_PATH="$(python -c 'import sys; import os.path; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
-	local SCRIPT_DIR
-	SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_REAL_PATH}")" && pwd)"
+  local SCRIPT_REAL_PATH
+  SCRIPT_REAL_PATH="$(python -c 'import sys; import os.path; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+  local SCRIPT_DIR
+  SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_REAL_PATH}")" && pwd)"
 
-	source "${SCRIPT_DIR}/../worker" && worker_init "git" "jira"
+  source "${SCRIPT_DIR}/../worker" && worker_init "git" "jira" "var"
 
- 	if [ -z "${BRANCHES_TO_SKIP:-}" ]; then
-	  BRANCHES_TO_SKIP=(master develop test)
-	fi
+  if [ -z "${BRANCHES_TO_SKIP:-}" ]; then
+    BRANCHES_TO_SKIP=(master develop test)
+  fi
 
-	if [[ -z "${USE_JIRA_SMART_COMMIT:-}" ]]; then
-	  USE_JIRA_SMART_COMMIT="false"
-	fi
+  if [[ -z "${USE_JIRA_SMART_COMMIT:-}" ]]; then
+    USE_JIRA_SMART_COMMIT="false"
+  fi
 
- 	COMMIT_FILE=$1
-	COMMIT_MSG_FIRST_LINE="$(head -1 "${1}")"
-	CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  COMMIT_FILE=$1
+  COMMIT_MSG_FIRST_LINE="$(head -1 "${1}")"
+  CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 
-	if [[ $(git_is_commit_wip "${COMMIT_MSG_FIRST_LINE}") == "true" ]]; then
-    	exit 0
-  	fi
+  if [[ $(git_is_commit_wip "${COMMIT_MSG_FIRST_LINE}") == "true" ]]; then
+      exit 0
+    fi
 
-	if [[ ! -z "${USE_JIRA_SMART_COMMIT}" ]]; then
+  if [[ "${USE_JIRA_SMART_COMMIT}" == "true" ]]; then
 
-		if [[ $(jira_smart_commit_is_conventional "${COMMIT_MSG_FIRST_LINE}") != "true" ]]; then
-		    jira_smart_commit_is_conventional
-		    exit 1
-		fi
-	else
+    if [[ $(jira_smart_commit_is_conventional "${COMMIT_MSG_FIRST_LINE}") != "true" ]]; then
+      jira_gitflow_conventionnal_branchname_guidelines
+      exit 1
+    fi
+  else
 
-		if [[ $(git_is_conventional_commit "${COMMIT_MSG_FIRST_LINE}") != "true" ]]; then
-		    git_conventionnal_commit_guidelines
-			exit 1
-		fi
+    if [[ $(git_is_conventional_commit "${COMMIT_MSG_FIRST_LINE}") != "true" ]]; then
+      git_conventionnal_commit_guidelines
+      exit 1
+    fi
 
-		if [[ $(git_is_valid_description "${COMMIT_MSG_FIRST_LINE}") != "true" ]]; then
- 			git_valid_description_guideline
-    		exit 1
-  		fi
-	fi
+    if [[ $(git_is_valid_description "${COMMIT_MSG_FIRST_LINE}") != "true" ]]; then
+      git_valid_description_guideline
+      exit 1
+    fi
+  fi
 
- 	exit 0;
+  exit 0;
 }
 
 main "${@:-}"
