@@ -5,11 +5,11 @@ set -o nounset -o pipefail -o errexit
 main() {
   local REMOTE_DEPENDENCIES_URL="https://raw.githubusercontent.com/diakitenicolas/utils/master/"
 
-  printf "Bootstrapping to scripts\n"
-  mkdir -p "./scripts"
+  printf "Bootstrapping to utils\n"
+  mkdir -p "./utils"
 
   (
-    cd "./scripts"
+    cd "./utils"
 
     curl -q -sSL --max-time 10 -o "./worker" "${REMOTE_DEPENDENCIES_URL}/worker"
     chmod +x "./worker"
